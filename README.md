@@ -1,4 +1,3 @@
-# AI-Assistent
 # 📄 AI Resume ATS Checker
 
 A Streamlit app that scores your resume for Applicant Tracking Systems (ATS) and suggests concrete improvements, powered by Google Gemini Flash.
@@ -78,6 +77,16 @@ streamlit run app.py
 - Scanned (image-only) PDFs cannot be read; use a text-based PDF or DOCX.
 - The ATS score is an AI estimate, not the output of a real ATS. Use it as guidance.
 - Resume text is sent to Google's Gemini API for analysis. Do not upload anything you are not comfortable sharing.
+
+## Troubleshooting
+
+**`ModuleNotFoundError` (for example `No module named 'docx'`) on Streamlit Cloud**
+
+Streamlit installs packages only from a file named exactly `requirements.txt` (not `requirements.text`) located in the root of the repo, next to `app.py`. Check that:
+
+1. The file name is spelled correctly and is in the repo root, not inside a subfolder.
+2. It contains `streamlit`, `google-genai`, `pypdf` and `python-docx` (the package is `python-docx`, not `docx`).
+3. You then reboot the app: **Manage app → Reboot app**.
 
 ## License
 
