@@ -3,16 +3,34 @@ Upload a resume (PDF / DOCX / TXT) and get an ATS score plus improvement tips,
 powered by Google Gemini Flash and Streamlit.
 """
 
+import importlib.util
 import json
 import os
 import re
 from io import BytesIO
 
 import streamlit as st
-from docx import Document
-from google import genai
-from google.genai import types
-from pypdf import PdfReader
+
+# Third-party libraries are imported lazily (inside the functions that use them)
+# so a missing package shows a clear message in the app instead of crashing it.
+REQUIRED_PACKAGES = {
+    "python-docx": "docx",
+    "pypdf": "pypdf",
+    "google-genai": "google.genai",
+}
+
+
+def find_missing_packages() -> list[str]:
+    """Return the pip names of required packages that are not installed."""
+    missing = []
+    for pip_name, module in REQUIRED_PACKAGES.items():
+        try:
+            if importlib.util.find_spec(module) is None:
+                missing.append(pip_name)
+        except (ImportError, ValueError):
+            missing.append(pip_name)
+    return missing
+
 
 # ----------------------------- Configuration -----------------------------
 MODEL_NAME = os.getenv("GEMINI_MODEL", "gemini-2.5-flash")
@@ -41,6 +59,8 @@ def extract_text(uploaded_file) -> str:
     data = uploaded_file.getvalue()
 
     if name.endswith(".pdf"):
+        from pypdf import PdfReader
+
         reader = PdfReader(BytesIO(data))
         if reader.is_encrypted:
             try:
@@ -50,6 +70,8 @@ def extract_text(uploaded_file) -> str:
         return "\n".join((page.extract_text() or "") for page in reader.pages).strip()
 
     if name.endswith(".docx"):
+        from docx import Document
+
         doc = Document(BytesIO(data))
         parts = [p.text for p in doc.paragraphs]
         for table in doc.tables:  # many resumes use tables for layout
@@ -132,6 +154,9 @@ def clamp_score(value) -> int:
 
 
 def analyze_resume(resume_text: str, job_description: str, api_key: str) -> dict:
+    from google import genai
+    from google.genai import types
+
     client = genai.Client(api_key=api_key)
     response = client.models.generate_content(
         model=MODEL_NAME,
@@ -222,6 +247,16 @@ def render_results(result: dict) -> None:
 def main() -> None:
     st.title("📄 AI Resume ATS Checker")
     st.caption(f"Upload your resume to get an ATS score and tips to improve it. Model: {MODEL_NAME}")
+
+    missing = find_missing_packages()
+    if missing:
+        st.error(
+            "Missing Python packages: " + ", ".join(missing) + ".\n\n"
+            "Make sure a file named exactly `requirements.txt` (not `.text`) is in the "
+            "ROOT of your GitHub repo, next to `app.py`, and contains these package "
+            "names. Then reboot the app (Manage app → Reboot)."
+        )
+        st.stop()
 
     with st.sidebar:
         st.header("Settings")
